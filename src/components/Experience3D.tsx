@@ -40,6 +40,18 @@ function getQuaternionFromDeviceOrientation(
 }
 
 /**
+ * Interpola linearmente entre dois ângulos, tratando a transição de 360/0 graus.
+ */
+function lerpAngle(current: number, target: number, t: number): number {
+  const currentNormalized = (current % 360 + 360) % 360;
+  const targetNormalized = (target % 360 + 360) % 360;
+  let delta = targetNormalized - currentNormalized;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  return current + delta * t;
+}
+
+/**
  * Componente que carrega e renderiza o modelo 3D do telefone,
  * aplicando as rotações baseadas nos dados do giroscópio.
  */
@@ -60,12 +72,12 @@ function PhoneModel({ gyroData }: Experience3DProps) {
     beta = beta ?? 0;
     gamma = gamma ?? 0;
 
-    // Suavização
-    setSmoothAlpha(prev => lerpAngle(prev, alpha!, 0.1));
-    setSmoothBeta(prev => lerpAngle(prev, beta!, 0.1));
-    setSmoothGamma(prev => lerpAngle(prev, gamma!, 0.1));
+    // Suavização dos ângulos
+    setSmoothAlpha(prev => lerpAngle(prev, alpha!, 0.05));
+    setSmoothBeta(prev => lerpAngle(prev, beta!, 0.05));
+    setSmoothGamma(prev => lerpAngle(prev, gamma!, 0.05));
 
-    // Orientação da tela
+    // Orientação da tela (em graus)
     const screenOrientation = window.screen.orientation?.angle ?? 0;
 
     // Quaternion baseado nos valores suavizados
@@ -76,11 +88,13 @@ function PhoneModel({ gyroData }: Experience3DProps) {
       screenOrientation
     );
 
+    console.log('Quaternion:', quaternion);
+
     modelRef.current.quaternion.copy(quaternion);
   });
 
   return (
-    <primitive object={scene} ref={modelRef} scale={1} position={[0, 0, 0]} />
+    <primitive object={scene} ref={modelRef} scale={5} position={[0, 0, 0]} />
   );
 }
 
@@ -102,15 +116,3 @@ export const Experience3D: React.FC<Experience3DProps> = ({ gyroData }) => {
     </Canvas>
   );
 };
-
-/**
- * Interpola linearmente entre dois ângulos, tratando a transição de 360/0 graus.
- */
-function lerpAngle(current: number, target: number, t: number): number {
-  const currentNormalized = (current % 360 + 360) % 360;
-  const targetNormalized = (target % 360 + 360) % 360;
-  let delta = targetNormalized - currentNormalized;
-  if (delta > 180) delta -= 360;
-  if (delta < -180) delta += 360;
-  return current + delta * t;
-}

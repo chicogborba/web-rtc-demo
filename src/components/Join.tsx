@@ -9,6 +9,7 @@ interface JoinProps {
 export const Join: React.FC<JoinProps> = ({ onReturnToMenu }) => {
   const { connected, connectToHost } = usePeer('join');
   const [hostIdToConnect, setHostIdToConnect] = useState<string>('');
+  const [gyroEnabled, setGyroEnabled] = useState<boolean>(false);
 
   const handleConnectClick = () => {
     if (hostIdToConnect.trim()) {
@@ -16,6 +17,49 @@ export const Join: React.FC<JoinProps> = ({ onReturnToMenu }) => {
     }
   };
 
+  const handleEnableGyro = async () => {
+    // só em iOS Safari
+    if (
+      typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function'
+    ) {
+      try {
+        const perm = await DeviceOrientationEvent.requestPermission();
+        if (perm === 'granted') {
+          setGyroEnabled(true);
+        } else {
+          alert('Permissão negada para acessar giroscópio.');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      // outros navegadores não precisam pedir
+      setGyroEnabled(true);
+    }
+  };
+
+  // prevent from suspending screen
+  React.useEffect(() => {
+    const preventSleep = () => {
+      if (document.body.requestFullscreen) {
+        document.body.requestFullscreen();
+      } else if (document.body.webkitRequestFullscreen) {
+        document.body.webkitRequestFullscreen();
+      } else if (document.body.mozRequestFullScreen) {
+        document.body.mozRequestFullScreen();
+      } else if (document.body.msRequestFullscreen) {
+        document.body.msRequestFullscreen();
+      }
+    };
+    preventSleep();
+    window.addEventListener('click', preventSleep);
+    window.addEventListener('touchstart', preventSleep);
+    return () => {
+      window.removeEventListener('click', preventSleep);
+      window.removeEventListener('touchstart', preventSleep);
+    };
+  }, []);
 
   return (
     <div style={{ padding: 20 }}>
@@ -41,9 +85,25 @@ export const Join: React.FC<JoinProps> = ({ onReturnToMenu }) => {
       >
         Conectar ao Host
       </button>
+
+      {/* botão para pedir permissão de giroscópio */}
+      {!gyroEnabled && connected && (
+        <div style={{ marginBottom: 16 }}>
+          <button
+            onClick={handleEnableGyro}
+            style={{ padding: '6px 12px' }}
+          >
+            Ativar Giroscópio
+          </button>
+        </div>
+      )}
+
       {connected ? (
         <p>
-          Conectado!  Enviando dados de giroscópio…
+          Conectado!
+          {gyroEnabled
+            ? ' Enviando dados de giroscópio…'
+            : ' Clique em “Ativar Giroscópio” para começar.'}
         </p>
       ) : (
         <p>Aguardando conexão com o Host…</p>
