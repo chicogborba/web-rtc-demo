@@ -1,26 +1,21 @@
 // src/components/Host.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { usePeer } from '../hooks/usePeer';
+import { Experience3D } from './Experience3D';
 
 interface HostProps {
   onReturnToMenu: () => void;
 }
 
 export const Host: React.FC<HostProps> = ({ onReturnToMenu }) => {
-  const { myPeerId, connected, messages, sendMessage } = usePeer('host');
+  const { myPeerId, connected, gyroData } = usePeer('host');
 
-  const [inputText, setInputText] = useState<string>('');
-
-  const handleSend = () => {
-    if (inputText.trim()) {
-      sendMessage(inputText.trim());
-      setInputText('');
-    }
-  };
+  console.log(gyroData)
 
   return (
     <div style={{ padding: 20 }}>
       <h2>Modo Host</h2>
+
       <p>
         <strong>1. Copie este ID e cole no Join:</strong>
       </p>
@@ -31,6 +26,7 @@ export const Host: React.FC<HostProps> = ({ onReturnToMenu }) => {
             padding: 8,
             fontFamily: 'monospace',
             wordBreak: 'break-all',
+            color: 'white',
           }}
         >
           {myPeerId}
@@ -44,45 +40,47 @@ export const Host: React.FC<HostProps> = ({ onReturnToMenu }) => {
       </p>
 
       {connected ? (
-        <div style={{ marginTop: 16 }}>
-          <h3>Conectado! Chat:</h3>
-          <div
-            style={{
-              border: '1px solid #ccc',
-              padding: 10,
-              minHeight: 100,
-              maxHeight: 300,
-              overflowY: 'auto',
-              marginBottom: 8,
-            }}
-          >
-            {messages.map((msg, idx) => (
-              <div key={idx}>{msg}</div>
-            ))}
-          </div>
-          <div>
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Digite sua mensagem..."
-              style={{ width: '80%', padding: 6 }}
-            />
-            <button
-              onClick={handleSend}
-              style={{ marginLeft: 8, padding: '6px 12px' }}
+        <>
+          <div style={{ marginTop: 16 }}>
+            <h3>Visualização em 3D com Giroscópio:</h3>
+
+            {/* Mostra valores do giroscópio */}
+            <div
+              style={{
+                background: 'black',
+                padding: '10px',
+                borderRadius: '8px',
+                fontFamily: 'monospace',
+                marginBottom: '10px',
+                display: 'flex',
+                justifyContent: 'space-around',
+              }}
             >
-              Enviar
-            </button>
+              <div>
+                <strong>Alpha:</strong> {gyroData.alpha?.toFixed(2) ?? 'N/A'}°
+              </div>
+              <div>
+                <strong>Beta:</strong> {gyroData.beta?.toFixed(2) ?? 'N/A'}°
+              </div>
+              <div>
+                <strong>Gamma:</strong> {gyroData.gamma?.toFixed(2) ?? 'N/A'}°
+              </div>
+            </div>
+
+            <Experience3D gyroData={gyroData} />
           </div>
-        </div>
+        </>
       ) : (
         <p style={{ marginTop: 16 }}>Aguardando conexão do Join…</p>
       )}
 
       <button
         onClick={onReturnToMenu}
-        style={{ marginTop: 24, padding: '6px 12px' }}
+        style={{
+          marginTop: 24,
+          padding: '10px 20px',
+          fontSize: 16,
+        }}
       >
         Voltar
       </button>

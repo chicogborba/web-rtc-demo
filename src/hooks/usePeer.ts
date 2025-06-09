@@ -5,104 +5,100 @@ import type { DataConnection } from 'peerjs';
 
 type PeerMode = 'host' | 'join' | null;
 
+export interface GyroData {
+  alpha: number | null;
+  beta: number | null;
+  gamma: number | null;
+}
+
 interface UsePeerReturn {
   myPeerId: string;
   connected: boolean;
-  messages: string[];
-  sendMessage: (msg: string) => void;
+  gyroData: GyroData;
   connectToHost: (hostId: string) => void;
 }
 
 export function usePeer(mode: PeerMode): UsePeerReturn {
   const [myPeerId, setMyPeerId] = useState<string>('');
   const [connected, setConnected] = useState<boolean>(false);
-  const [messages, setMessages] = useState<string[]>([]);
+  const [gyroData, setGyroData] = useState<GyroData>({
+    alpha: null,
+    beta: null,
+    gamma: null,
+  });
 
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
+  // Agora inicializamos com null para cumprir a assinatura do useRef
+  const orientationHandlerRef = useRef<((e: DeviceOrientationEvent) => void) | null>(null);
 
   useEffect(() => {
-    if (!mode) {
-      return;
-    }
+    if (!mode) return;
 
     const peer = new Peer();
     peerRef.current = peer;
 
-    // 2) Quando o Peer abre, recebe seu ID único
-    peer.on('open', (id: string) => {
+    peer.on('open', id => {
       setMyPeerId(id);
     });
 
-    // 3) Se for Host, aguarda inbound connections do Join
     if (mode === 'host') {
-      peer.on('connection', (conn: DataConnection) => {
+      peer.on('connection', conn => {
         connRef.current = conn;
 
         conn.on('open', () => {
           setConnected(true);
         });
 
-        conn.on('data', (data: unknown) => {
-          // “Join: <texto recebido>”
-          setMessages((prev) => [...prev, 'Join: ' + data]);
+        conn.on('data', data => {
+          // Espera receber { alpha, beta, gamma }
+          const d = data as GyroData;
+          setGyroData(d);
         });
       });
     }
 
-    // Se for Join, aguardamos connectToHost() ser chamado manualmente
-
     return () => {
-      // Cleanup ao desativar este hook (ou mudar `mode` para null)
+      // cleanup: remove listener se existir
+      if (orientationHandlerRef.current) {
+        window.removeEventListener('deviceorientation', orientationHandlerRef.current);
+      }
       peer.destroy();
       peerRef.current = null;
       connRef.current = null;
       setMyPeerId('');
       setConnected(false);
-      setMessages([]);
+      setGyroData({ alpha: null, beta: null, gamma: null });
     };
   }, [mode]);
 
-  // Função para Join chamar peer.connect(hostId)
-  const connectToHost = useCallback(
-    (hostId: string) => {
-      if (mode !== 'join') return;
-      if (!peerRef.current) return;
-      if (!hostId.trim()) return;
+  const connectToHost = useCallback((hostId: string) => {
+    if (mode !== 'join' || !peerRef.current || !hostId.trim()) return;
 
-      const conn = peerRef.current.connect(hostId.trim());
-      connRef.current = conn;
+    const conn = peerRef.current.connect(hostId.trim());
+    connRef.current = conn;
 
-      conn.on('open', () => {
-        setConnected(true);
-      });
+    conn.on('open', () => {
+      setConnected(true);
 
-      conn.on('data', (data: unknown) => {
-        setMessages((prev) => [...prev, 'Host: ' + data]);
-      });
-    },
-    [mode]
-  );
-
-  // Função para enviar mensagem (tanto Host quanto Join podem chamar)
-  const sendMessage = useCallback(
-    (msg: string) => {
-      const conn = connRef.current;
-      if (!conn) return;
-      if (!conn.open) return;
-      if (!msg.trim()) return;
-
-      conn.send(msg);
-      setMessages((prev) => [...prev, 'Você: ' + msg]);
-    },
-    []
-  );
+      // depois de conectado, começa a enviar giroscopio
+      const handler = (e: DeviceOrientationEvent) => {
+        const data = {
+          alpha: e.alpha,
+          beta: e.beta,
+          gamma: e.gamma,
+        };
+        conn.send(data);
+      };
+      orientationHandlerRef.current = handler;
+      window.addEventListener('deviceorientation', handler);
+    });
+  }, [mode]);
 
   return {
     myPeerId,
     connected,
-    messages,
-    sendMessage,
+    gyroData,
     connectToHost,
   };
 }
