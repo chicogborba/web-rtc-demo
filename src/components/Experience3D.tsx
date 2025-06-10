@@ -56,7 +56,7 @@ function lerpAngle(current: number, target: number, t: number): number {
  * aplicando as rotações baseadas nos dados do giroscópio.
  */
 function PhoneModel({ gyroData }: Experience3DProps) {
-  const { scene } = useGLTF('/src/assets/Phone.glb');
+  const { scene } = useGLTF('/Phone.glb');
   const modelRef = useRef<THREE.Group>(null!);
 
   const [smoothAlpha, setSmoothAlpha] = useState(0);
