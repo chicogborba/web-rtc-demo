@@ -21,9 +21,11 @@ export const Join: React.FC<JoinProps> = ({ onReturnToMenu }) => {
     // só em iOS Safari
     if (
       typeof DeviceOrientationEvent !== 'undefined' &&
+      // @ts-expect-error not all browsers have this
       typeof DeviceOrientationEvent.requestPermission === 'function'
     ) {
       try {
+      // @ts-expect-error not all browsers have this
         const perm = await DeviceOrientationEvent.requestPermission();
         if (perm === 'granted') {
           setGyroEnabled(true);
@@ -39,27 +41,6 @@ export const Join: React.FC<JoinProps> = ({ onReturnToMenu }) => {
     }
   };
 
-  // prevent from suspending screen
-  React.useEffect(() => {
-    const preventSleep = () => {
-      if (document.body.requestFullscreen) {
-        document.body.requestFullscreen();
-      } else if (document.body.webkitRequestFullscreen) {
-        document.body.webkitRequestFullscreen();
-      } else if (document.body.mozRequestFullScreen) {
-        document.body.mozRequestFullScreen();
-      } else if (document.body.msRequestFullscreen) {
-        document.body.msRequestFullscreen();
-      }
-    };
-    preventSleep();
-    window.addEventListener('click', preventSleep);
-    window.addEventListener('touchstart', preventSleep);
-    return () => {
-      window.removeEventListener('click', preventSleep);
-      window.removeEventListener('touchstart', preventSleep);
-    };
-  }, []);
 
   return (
     <div style={{ padding: 20 }}>
